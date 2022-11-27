@@ -28,6 +28,23 @@ struct Args {
     decode_file: String,
 }
 
+fn find_and_generate_dynamic_deps(descriptor_proto: &FileDescriptorProto, descriptor_protos: &Vec<FileDescriptorProto>) -> Vec<FileDescriptor>{
+    let mut dependency_list: Vec<FileDescriptor> = vec![];
+    if descriptor_proto.dependency.len() == 0 {
+        return dependency_list;
+    }
+
+    for deps in descriptor_proto.dependency.iter() {
+        let dep_descriptor = descriptor_protos
+        .iter()
+        .filter(|desc| desc.name() == deps.as_str())
+        .collect::<Vec<&FileDescriptorProto>>().pop().unwrap();
+
+        let dep_deps = find_and_generate_dynamic_deps(dep_descriptor, descriptor_protos);
+        dependency_list.push(FileDescriptor::new_dynamic(dep_descriptor.to_owned(), &dep_deps).unwrap());
+    }
+
+    return dependency_list;
 }
 
 fn main() {

@@ -74,11 +74,17 @@ fn main() {
         .unwrap()
         .file_descriptors;
 
-    // // This is our .proto file converted to `FileDescriptorProto` from `descriptor.proto`.
-    // let mut file_descriptor_proto: Vec<&FileDescriptorProto> = file_descriptor_protos.iter()
-    //     .filter(|proto| proto.name() == top_level_path.file_name().unwrap().to_str().unwrap()).collect();
-    // let message_descriptor = file_descriptor_proto.pop().unwrap();
-    // message_descriptor.
+    // This is our .proto file converted to `FileDescriptorProto` from `descriptor.proto`.
+    let mut file_descriptor_proto: Vec<&FileDescriptorProto> = file_descriptor_protos.iter()
+        .filter(|proto| proto.name() == top_level_path.file_name().unwrap().to_str().unwrap()).collect();
+    let top_level_file_descriptor_proto = file_descriptor_proto.pop().unwrap();
+    
+    let top_level_file_descriptor = FileDescriptor::
+        new_dynamic(top_level_file_descriptor_proto.to_owned(), 
+        &find_and_generate_dynamic_deps(top_level_file_descriptor_proto, &file_descriptor_protos))
+        .unwrap();
+
+    let top_level_message_descriptor = top_level_file_descriptor.message_by_package_relative_name(args.message.as_str()).unwrap();
     
     // println!("{}", message_descriptor.name());
 }

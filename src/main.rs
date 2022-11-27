@@ -1,9 +1,11 @@
+use std::io::{Read};
 use std::{env::temp_dir, path::Path};
+use clap::builder::Str;
 use clap::{Parser, Arg};
-use protobuf::descriptor::FileDescriptorProto;
+use protobuf::descriptor::{FileDescriptorProto, self};
 use protobuf::reflect::FileDescriptor;
-use protobuf::reflect::ReflectValueBox;
-use std::fs;
+
+use std::fs::{self, File};
 
 // Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -20,6 +22,12 @@ struct Args {
     /// Path of proto files required to generate <Message>
     #[arg(short, long)]
     include_path: String,
+
+    /// File to be decoded
+    #[arg(short, long)]
+    decode_file: String,
+}
+
 }
 
 fn main() {
@@ -29,6 +37,14 @@ fn main() {
     std::fs::create_dir_all(&tmp).expect("Cannot create temp directory");
     let top_level_path = Path::new(&args.top_level_path);
     let include_path = Path::new(&args.include_path);
+    let decode_file_path = Path::new(&args.decode_file);
+
+    //Read file into bytes
+    let mut decode_file = File::open(decode_file_path).unwrap();
+    let mut buffer = Vec::new();
+    
+    // Read file into vector.
+    decode_file.read_to_end(&mut buffer);
 
     // Parse text `.proto` file to `FileDescriptorProto` message.
     // Note this API is not stable and subject to change.

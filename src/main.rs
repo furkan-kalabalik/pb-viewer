@@ -73,7 +73,7 @@ fn main() {
         .parse_and_typecheck()
         .unwrap()
         .file_descriptors;
-
+    
     // This is our .proto file converted to `FileDescriptorProto` from `descriptor.proto`.
     let mut file_descriptor_proto: Vec<&FileDescriptorProto> = file_descriptor_protos.iter()
         .filter(|proto| proto.name() == top_level_path.file_name().unwrap().to_str().unwrap()).collect();
@@ -86,5 +86,6 @@ fn main() {
 
     let top_level_message_descriptor = top_level_file_descriptor.message_by_package_relative_name(args.message.as_str()).unwrap();
     
-    // println!("{}", message_descriptor.name());
+    let decoded_message = top_level_message_descriptor.parse_from_bytes(&buffer).unwrap();
+    println!("{:?}", decoded_message.to_string());
 }

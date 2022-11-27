@@ -12,19 +12,19 @@ use std::fs::{self, File};
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Path of proto file that will be decoded
-    #[arg(short, long)]
+    #[arg(short, long, num_args=1)]
     top_level_path: String,
 
     /// Name of message to be decoded
-    #[arg(short, long)]
+    #[arg(short, long, num_args=1)]
     message: String,
 
     /// Path of proto files required to generate <Message>
-    #[arg(short, long)]
-    include_path: String,
+    #[arg(short, long, num_args=0..)]
+    include_paths: Vec<String>,
 
     /// File to be decoded
-    #[arg(short, long)]
+    #[arg(short, long, num_args=1)]
     decode_file: String,
 }
 
@@ -53,7 +53,11 @@ fn main() {
     tmp.push(&args.message);
     std::fs::create_dir_all(&tmp).expect("Cannot create temp directory");
     let top_level_path = Path::new(&args.top_level_path);
-    let include_path = Path::new(&args.include_path);
+    let include_paths: Vec<&Path> = args.include_paths
+        .iter()
+        .map(|path| Path::new(path))
+        .collect();
+
     let decode_file_path = Path::new(&args.decode_file);
 
     //Read file into bytes
@@ -61,14 +65,14 @@ fn main() {
     let mut buffer = Vec::new();
     
     // Read file into vector.
-    decode_file.read_to_end(&mut buffer);
+    decode_file.read_to_end(&mut buffer).unwrap();
 
     // Parse text `.proto` file to `FileDescriptorProto` message.
     // Note this API is not stable and subject to change.
     // But binary protos can always be generated manually with `protoc` command.
-    let mut file_descriptor_protos = protobuf_parse::Parser::new()
+    let file_descriptor_protos = protobuf_parse::Parser::new()
         .pure()
-        .includes([&include_path])
+        .includes(include_paths)
         .input(&top_level_path)
         .parse_and_typecheck()
         .unwrap()

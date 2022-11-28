@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 protobuf = "3.2.0"
 protobuf-parse = "3.2.0"
+protobuf-json-mapping = "3.2.0"
 clap = { version = "4.0.26", features = ["derive"] }

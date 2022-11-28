@@ -1,9 +1,9 @@
-use std::io::{Read};
-use std::{env::temp_dir, path::Path};
 use clap::builder::Str;
-use clap::{Parser, Arg};
-use protobuf::descriptor::{FileDescriptorProto, self};
+use clap::{Arg, Parser};
+use protobuf::descriptor::{self, FileDescriptorProto};
 use protobuf::reflect::FileDescriptor;
+use std::io::Read;
+use std::{env::temp_dir, path::Path};
 
 use std::fs::{self, File};
 
@@ -12,11 +12,11 @@ use std::fs::{self, File};
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Path of proto file that will be decoded
-    #[arg(short, long, num_args=1)]
+    #[arg(short, long, num_args = 1)]
     top_level_path: String,
 
     /// Name of message to be decoded
-    #[arg(short, long, num_args=1)]
+    #[arg(short, long, num_args = 1)]
     message: String,
 
     /// Path of proto files required to generate <Message>
@@ -24,11 +24,14 @@ struct Args {
     include_paths: Vec<String>,
 
     /// File to be decoded
-    #[arg(short, long, num_args=1)]
+    #[arg(short, long, num_args = 1)]
     decode_file: String,
 }
 
-fn find_and_generate_dynamic_deps(descriptor_proto: &FileDescriptorProto, descriptor_protos: &Vec<FileDescriptorProto>) -> Vec<FileDescriptor>{
+fn find_and_generate_dynamic_deps(
+    descriptor_proto: &FileDescriptorProto,
+    descriptor_protos: &Vec<FileDescriptorProto>,
+) -> Vec<FileDescriptor> {
     let mut dependency_list: Vec<FileDescriptor> = vec![];
     if descriptor_proto.dependency.len() == 0 {
         return dependency_list;
@@ -36,15 +39,18 @@ fn find_and_generate_dynamic_deps(descriptor_proto: &FileDescriptorProto, descri
 
     for deps in descriptor_proto.dependency.iter() {
         let dep_descriptor = descriptor_protos
-        .iter()
-        .filter(|desc| desc.name() == deps.as_str())
-        .collect::<Vec<&FileDescriptorProto>>().pop().unwrap();
+            .iter()
+            .filter(|desc| desc.name() == deps.as_str())
+            .collect::<Vec<&FileDescriptorProto>>()
+            .pop()
+            .unwrap();
 
         let dep_deps = find_and_generate_dynamic_deps(dep_descriptor, descriptor_protos);
-        dependency_list.push(FileDescriptor::new_dynamic(dep_descriptor.to_owned(), &dep_deps).unwrap());
+        dependency_list
+            .push(FileDescriptor::new_dynamic(dep_descriptor.to_owned(), &dep_deps).unwrap());
     }
 
-    return dependency_list;
+    dependency_list
 }
 
 fn main() {
@@ -53,7 +59,8 @@ fn main() {
     tmp.push(&args.message);
     std::fs::create_dir_all(&tmp).expect("Cannot create temp directory");
     let top_level_path = Path::new(&args.top_level_path);
-    let include_paths: Vec<&Path> = args.include_paths
+    let include_paths: Vec<&Path> = args
+        .include_paths
         .iter()
         .map(|path| Path::new(path))
         .collect();
@@ -63,7 +70,7 @@ fn main() {
     //Read file into bytes
     let mut decode_file = File::open(decode_file_path).unwrap();
     let mut buffer = Vec::new();
-    
+
     // Read file into vector.
     decode_file.read_to_end(&mut buffer).unwrap();
 
@@ -77,19 +84,27 @@ fn main() {
         .parse_and_typecheck()
         .unwrap()
         .file_descriptors;
-    
+
     // This is our .proto file converted to `FileDescriptorProto` from `descriptor.proto`.
-    let mut file_descriptor_proto: Vec<&FileDescriptorProto> = file_descriptor_protos.iter()
-        .filter(|proto| proto.name() == top_level_path.file_name().unwrap().to_str().unwrap()).collect();
+    let mut file_descriptor_proto: Vec<&FileDescriptorProto> = file_descriptor_protos
+        .iter()
+        .filter(|proto| proto.name() == top_level_path.file_name().unwrap().to_str().unwrap())
+        .collect();
     let top_level_file_descriptor_proto = file_descriptor_proto.pop().unwrap();
-    
-    let top_level_file_descriptor = FileDescriptor::
-        new_dynamic(top_level_file_descriptor_proto.to_owned(), 
-        &find_and_generate_dynamic_deps(top_level_file_descriptor_proto, &file_descriptor_protos))
+
+    let top_level_file_descriptor = FileDescriptor::new_dynamic(
+        top_level_file_descriptor_proto.to_owned(),
+        &find_and_generate_dynamic_deps(top_level_file_descriptor_proto, &file_descriptor_protos),
+    )
+    .unwrap();
+
+    let top_level_message_descriptor = top_level_file_descriptor
+        .message_by_package_relative_name(args.message.as_str())
         .unwrap();
 
-    let top_level_message_descriptor = top_level_file_descriptor.message_by_package_relative_name(args.message.as_str()).unwrap();
-    
-    let decoded_message = top_level_message_descriptor.parse_from_bytes(&buffer).unwrap();
-    println!("{:?}", decoded_message.to_string());
+    let decoded_message = top_level_message_descriptor
+        .parse_from_bytes(&buffer)
+        .unwrap();
+
+    println!("{}", protobuf_json_mapping::print_to_string(&*decoded_message).unwrap());
 }

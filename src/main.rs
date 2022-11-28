@@ -1,11 +1,13 @@
-use clap::builder::Str;
-use clap::{Arg, Parser};
-use protobuf::descriptor::{self, FileDescriptorProto};
+use clap::Parser;
+use protobuf::descriptor::FileDescriptorProto;
 use protobuf::reflect::FileDescriptor;
+use serde_json::Value;
+use std::fs::File;
 use std::io::Read;
 use std::{env::temp_dir, path::Path};
+use ui::run_ui;
 
-use std::fs::{self, File};
+mod ui;
 
 // Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -106,5 +108,14 @@ fn main() {
         .parse_from_bytes(&buffer)
         .unwrap();
 
-    println!("{}", protobuf_json_mapping::print_to_string(&*decoded_message).unwrap());
+    // Parse the string of data into serde_json::Value.
+    let value: Value = serde_json::from_str(
+        protobuf_json_mapping::print_to_string(&*decoded_message)
+            .unwrap()
+            .as_str(),
+    )
+    .unwrap();
+    let decoded_object = value.as_object().unwrap();
+
+    run_ui(decoded_object).expect("UI Error");
 }

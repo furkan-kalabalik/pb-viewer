@@ -11,5 +11,5 @@ protobuf-parse = "3.2.0"
 protobuf-json-mapping = "3.2.0"
 clap = { version = "4.0.26", features = ["derive"] }
 serde_json = "1.0.89"
-tui = "0.19.0"
-crossterm = "0.25"
+cursive_tree_view = "0.8"
+cursive = "0.17"

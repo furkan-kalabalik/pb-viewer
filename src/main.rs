@@ -1,9 +1,10 @@
 use clap::Parser;
 use protobuf::descriptor::FileDescriptorProto;
 use protobuf::reflect::FileDescriptor;
+use protobuf_json_mapping::PrintOptions;
 use serde_json::Value;
 use std::fs::File;
-use std::io::Read;
+use std::io::{self, Read, Write};
 use std::{env::temp_dir, path::Path};
 use ui::run_ui;
 
@@ -108,14 +109,18 @@ fn main() {
         .parse_from_bytes(&buffer)
         .unwrap();
 
-    // Parse the string of data into serde_json::Value.
+    //Parse the string of data into serde_json::Value.
+    let mut print_ops = PrintOptions::default();
+    print_ops.always_output_default_values = true;
+    print_ops.proto_field_name = true;
     let value: Value = serde_json::from_str(
-        protobuf_json_mapping::print_to_string(&*decoded_message)
+        protobuf_json_mapping::print_to_string_with_options(&*decoded_message, &print_ops)
             .unwrap()
             .as_str(),
     )
     .unwrap();
-    let decoded_object = value.as_object().unwrap();
-
-    run_ui(decoded_object).expect("UI Error");
+    
+    
+    
+    run_ui(&value).expect("UI Error");
 }
